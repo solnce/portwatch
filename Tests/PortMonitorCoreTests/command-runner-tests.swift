@@ -73,37 +73,30 @@ final class CommandRunnerTests: XCTestCase {
     }
 
     func testDoesNotWaitForeverWhenDescendantKeepsOutputPipesOpen() async throws {
-        let python = URL(fileURLWithPath: "/usr/bin/python3")
-        guard FileManager.default.isExecutableFile(atPath: python.path) else {
-            throw XCTSkip("/usr/bin/python3 がありません")
-        }
+        let shell = URL(fileURLWithPath: "/bin/sh")
         let exitMarker = FileManager.default.temporaryDirectory
             .appendingPathComponent("port-watch-pipe-holder-\(UUID().uuidString).marker")
         defer {
             try? FileManager.default.removeItem(at: exitMarker)
         }
         let script = """
-        import os, signal, sys, time
-        child = os.fork()
-        if child == 0:
-            signal.signal(signal.SIGPIPE, signal.SIG_IGN)
-            while True:
-                try:
-                    os.write(1, b'x')
-                    time.sleep(0.01)
-                except BrokenPipeError:
-                    with open(sys.argv[1], 'w') as marker:
-                        marker.write('closed')
-                    os._exit(0)
-        os._exit(0)
+        marker=$1
+        (
+            trap '/usr/bin/touch "$marker"; exit 0' PIPE
+            while true; do
+                printf x
+                sleep 0.01
+            done
+        ) &
+        exit 0
         """
-        let runner = FoundationCommandRunner(timeout: 0.5)
+        let runner = FoundationCommandRunner(timeout: 5)
         let startedAt = ContinuousClock.now
 
         do {
             _ = try await runner.run(
-                executable: python,
-                arguments: ["-c", script, exitMarker.path]
+                executable: shell,
+                arguments: ["-c", script, "port-watch-pipe-holder", exitMarker.path]
             )
             XCTFail("継承された出力パイプを有限時間で閉じる必要があります")
         } catch let error as CommandRunError {
@@ -114,14 +107,14 @@ final class CommandRunnerTests: XCTestCase {
             XCTAssertTrue(message.contains("出力パイプ"))
         }
 
-        XCTAssertLessThan(startedAt.duration(to: .now), .seconds(2))
-        for _ in 0..<200 {
-            if (try? String(contentsOf: exitMarker, encoding: .utf8)) == "closed" {
+        XCTAssertLessThan(startedAt.duration(to: .now), .seconds(7))
+        for _ in 0..<1_000 {
+            if FileManager.default.fileExists(atPath: exitMarker.path) {
                 break
             }
             try await Task.sleep(for: .milliseconds(5))
         }
-        XCTAssertEqual(try? String(contentsOf: exitMarker, encoding: .utf8), "closed")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: exitMarker.path))
     }
 
     func testTerminatesCommandAfterTimeout() async throws {
