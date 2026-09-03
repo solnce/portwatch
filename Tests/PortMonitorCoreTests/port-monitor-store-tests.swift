@@ -379,6 +379,7 @@ final class PortMonitorStoreTests: XCTestCase {
         XCTFail("期待した状態に遷移しませんでした")
     }
 
+    @MainActor
     private func waitUntilAsync(
         _ condition: @escaping @Sendable () async -> Bool
     ) async {
