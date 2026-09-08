@@ -70,6 +70,12 @@ swift test --disable-sandbox \
 
 The test suite covers individual parsing and permission cases, repeated and concurrent refresh/stop operations, scan-order races, and a 5,000-listener load case.
 
+To regenerate the bundled app icon from its 1024-pixel source image:
+
+```bash
+./scripts/build-icon.sh
+```
+
 ## 日本語
 
 Port Watchは、ローカルでTCPポートを待ち受けているプロセスをmacOSのメニューバーから確認・停止できるアプリです。

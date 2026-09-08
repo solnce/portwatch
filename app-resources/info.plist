@@ -8,6 +8,8 @@
     <string>Port Watch</string>
     <key>CFBundleExecutable</key>
     <string>local-port-monitor</string>
+    <key>CFBundleIconFile</key>
+    <string>app-icon.icns</string>
     <key>CFBundleIdentifier</key>
     <string>com.solnce.portwatch</string>
     <key>CFBundleInfoDictionaryVersion</key>
